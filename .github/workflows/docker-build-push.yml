@@ -20,12 +20,12 @@ jobs:
       - name: Build and Push Docker image to ACR
         uses: azure/docker-login@v1
         with:
-          login-server: myregistry.azurecr.io
+          login-server: saravazureacr.azurecr.io
           username: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
           password: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
 
       - name: Build and Push
         run: |
-          IMAGE=myregistry.azurecr.io/myapp:latest
+          IMAGE=saravazureacr.azurecr.io/cctest:latest
           docker build -t $IMAGE .
           docker push $IMAGE
