@@ -65,34 +65,18 @@ pipeline {
             steps {
                 script {
                     unstash 'source'
-                        // --- BEGIN Recommended Config for Dubious Ownership ---
-                        sh '''
-                            echo '#!/bin/sh' > /tmp/git-askpass.sh
-                            echo 'exit 0' >> /tmp/git-askpass.sh
-                            chmod +x /tmp/git-askpass.sh
-                        '''
-                        // Wrap the git command in a withEnv block to set GIT_ASKPASS
-                        withEnv(["GIT_ASKPASS=/tmp/git-askpass.sh"]) {
-                            // --- BEGIN DEBUGGING COMMANDS (CORRECTED) ---
-                            sh 'echo "Current user: $(whoami)"'
-                            sh 'echo "Current user ID and groups: $(id)"'
-                            sh 'echo "GIT_ASKPASS variable: $GIT_ASKPASS"'
-                            sh 'echo "Permissions of git-askpass.sh:"'
-                            sh 'ls -l /tmp/git-askpass.sh'
-                            sh 'echo "Contents of git-askpass.sh:"'
-                            sh 'cat /tmp/git-askpass.sh'
-                            sh 'echo "Git global config:"'
-                            sh 'git config --list --global'
-                            sh 'echo "Git local config (if any):"'
-                            sh 'git config --list --local || true'
-                            sh 'echo "Ownership of workspace directory:"'
-                            sh 'ls -ld /var/lib/jenkins/workspace/Cortex-Cloud-Scan-Test*'
-                            // --- END DEBUGGING COMMANDS ---
+                    // --- FIX for fatal: detected dubious ownership ---
+                    // This dynamically adds the current workspace directory to Git's safe.directory
+                    // configuration for the 'root' user inside the Docker container.
+                    sh '''
+                        CURRENT_WORKSPACE=$(pwd)
+                        git config --global --add safe.directory "$CURRENT_WORKSPACE"
+                        echo "Added $CURRENT_WORKSPACE to Git's safe directories for root user inside container."
+                        git config --list --global # Verify the config was added
+                    '''
+                    // --- END FIX ---
 
-                            env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
-                        }
-                        // --- END Recommended Config for Dubious Ownership ---
-
+                    env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
 
                     sh """
                     docker run --rm -v \$(pwd):/home/code cortexcli:${env.CORTEX_CLI_VERSION} \\
