@@ -73,6 +73,20 @@ pipeline {
             steps {
                 script {
                     unstash 'source' // Retrieve the source code stashed in the "Checkout" stage
+
+                    // --- BEGIN Recommended Config for Dubious Ownership ---
+                    // This creates a dummy script that Git will try to use for credentials,
+                    // effectively bypassing the interactive prompt or ownership check.
+                    sh '''
+                        echo '#!/bin/sh' > /tmp/git-askpass.sh
+                        echo 'exit 0' >> /tmp/git-askpass.sh
+                        chmod +x /tmp/git-askpass.sh
+                    '''
+                    // Wrap the git command in a withEnv block to set GIT_ASKPASS
+                    withEnv(["GIT_ASKPASS=/tmp/git-askpass.sh"]) {
+
+
+                        
                     // Get current branch name (assuming a Git checkout has occurred)
                     env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
 
