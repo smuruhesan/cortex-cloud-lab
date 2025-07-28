@@ -3,8 +3,6 @@ pipeline {
         docker {
             image 'jenkins/agent:alpine'
             args '-u root --privileged -v /var/run/docker.sock:/var/run/docker.sock'
-            // IMPORTANT: Replace this with the actual label of your Jenkins agent that has Docker installed
-            label 'Sarav-Jenkins' // <-- **REPLACE THIS** with your agent's label (e.g., 'my-docker-node')
         }
     }
 
@@ -15,20 +13,16 @@ pipeline {
         CORTEX_CLI_VERSION = '0.13.0'
     }
 
-// Added Extra starts - to checkout Source Code
     stages {
         stage('Checkout Source Code') {
             steps {
-                // Checkout your Git repository
-                // Make sure your Jenkins job is configured to use SCM (Git)
-                // When using a Pipeline job with SCM, Jenkins automatically checks out the code.
-                // We'll stash it for later use by the docker run command.
+                // This 'checkout scm' step is usually handled by Jenkins' SCM polling
+                // and might not be the direct cause of the dubious ownership if it's
+                // the 'git rev-parse' later that fails.
                 checkout scm
-                stash includes: '**/*', name: 'source' // Stash all files for later use by the Docker container
+                stash includes: '**/*', name: 'source'
             }
         }
-
-// Added Extra ends
 
         stage('Install Dependencies') {
             steps {
@@ -40,7 +34,7 @@ pipeline {
 
         stage('Get Temporary Token') {
             environment {
-                TEMP_TOKEN = "" // Initialize TEMP_TOKEN for this stage
+                TEMP_TOKEN = ""
             }
             steps {
                 script {
@@ -52,7 +46,6 @@ pipeline {
                           --data '{}' \\
                           -s
                     """, returnStdout: true).trim()
-
 
                     env.TEMP_TOKEN = sh(script: """echo '${response}' | jq -r '.token'""", returnStdout: true).trim()
                 }
@@ -69,11 +62,9 @@ pipeline {
         }
 
         stage('Run Docker Container (Code Scan)') {
-        // Replace the repo-id with your repository like: owner/repo
             steps {
                 script {
-                    unstash 'source' // Retrieve the source code stashed in the "Checkout" stage
-
+                    unstash 'source'
                     // --- BEGIN Recommended Config for Dubious Ownership ---
                     // This creates a dummy script that Git will try to use for credentials,
                     // effectively bypassing the interactive prompt or ownership check.
@@ -84,11 +75,9 @@ pipeline {
                     '''
                     // Wrap the git command in a withEnv block to set GIT_ASKPASS
                     withEnv(["GIT_ASKPASS=/tmp/git-askpass.sh"]) {
-
-
-                        
-                    // Get current branch name (assuming a Git checkout has occurred)
-                    env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                        env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                    }
+                    // --- END Recommended Config for Dubious Ownership ---
 
                     sh """
                     docker run --rm -v \$(pwd):/home/code cortexcli:${env.CORTEX_CLI_VERSION} \\
@@ -97,7 +86,7 @@ pipeline {
                       --api-key-id ${env.CORTEX_API_KEY_ID} \\
                       code scan \\
                       --directory /home/code \\
-                      --repo-id smuruhesan/cortex-cloud-lab \\ // <-- **REPLACE THIS** (e.g., myuser/my-sample-repo)
+                      --repo-id smuruhesan/cortex-cloud-lab \\ // Your GitHub repo owner/name
                       --branch ${env.BRANCH} \\
                       --source JENKINS \\
                       --create-repo-if-missing
