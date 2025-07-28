@@ -65,16 +65,30 @@ pipeline {
             steps {
                 script {
                     unstash 'source'
-                    // --- BEGIN Recommended Config for Dubious Ownership ---
-                    // This creates a dummy script that Git will try to use for credentials,
-                    // effectively bypassing the interactive prompt or ownership check.
-                    sh '''
-                        echo '#!/bin/sh' > /tmp/git-askpass.sh
-                        echo 'exit 0' >> /tmp/git-askpass.sh
-                        chmod +x /tmp/git-askpass.sh
-                    '''
-                    // Wrap the git command in a withEnv block to set GIT_ASKPASS
-                    withEnv(["GIT_ASKPASS=/tmp/git-askpass.sh"]) {
+ // --- BEGIN Recommended Config for Dubious Ownership ---
+                        sh '''
+                            echo '#!/bin/sh' > /tmp/git-askpass.sh
+                            echo 'exit 0' >> /tmp/git-askpass.sh
+                            chmod +x /tmp/git-askpass.sh
+                        '''
+                        // Wrap the git command in a withEnv block to set GIT_ASKPASS
+                        withEnv(["GIT_ASKPASS=/tmp/git-askpass.sh"]) {
+                            // --- BEGIN DEBUGGING COMMANDS ---
+                            sh 'echo "Current user: $(whoami)"'
+                            sh 'echo "Current user ID and groups: $(id)"'
+                            sh 'echo "GIT_ASKPASS variable: $GIT_ASKPASS"'
+                            sh 'echo "Permissions of git-askpass.sh:"'
+                            sh 'ls -l /tmp/git-askpass.sh'
+                            sh 'echo "Contents of git-askpass.sh:"'
+                            sh 'cat /tmp/git-askpass.sh'
+                            sh 'echo "Git global config:"'
+                            sh 'git config --list --global'
+                            sh 'echo "Git local config (if any):"'
+                            sh 'git config --list --local || true' # '|| true' to prevent failure if no local config
+                            sh 'echo "Ownership of workspace directory:"'
+                            sh 'ls -ld /var/lib/jenkins/workspace/Cortex-Cloud-Scan-Test*' // Adjust if your job name is different
+                            // --- END DEBUGGING COMMANDS ---
+
                         env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
                     }
                     // --- END Recommended Config for Dubious Ownership ---
