@@ -65,7 +65,7 @@ pipeline {
             steps {
                 script {
                     unstash 'source'
- // --- BEGIN Recommended Config for Dubious Ownership ---
+                        // --- BEGIN Recommended Config for Dubious Ownership ---
                         sh '''
                             echo '#!/bin/sh' > /tmp/git-askpass.sh
                             echo 'exit 0' >> /tmp/git-askpass.sh
@@ -73,7 +73,7 @@ pipeline {
                         '''
                         // Wrap the git command in a withEnv block to set GIT_ASKPASS
                         withEnv(["GIT_ASKPASS=/tmp/git-askpass.sh"]) {
-                            // --- BEGIN DEBUGGING COMMANDS ---
+                            // --- BEGIN DEBUGGING COMMANDS (CORRECTED) ---
                             sh 'echo "Current user: $(whoami)"'
                             sh 'echo "Current user ID and groups: $(id)"'
                             sh 'echo "GIT_ASKPASS variable: $GIT_ASKPASS"'
@@ -84,14 +84,15 @@ pipeline {
                             sh 'echo "Git global config:"'
                             sh 'git config --list --global'
                             sh 'echo "Git local config (if any):"'
-                            sh 'git config --list --local || true' # '|| true' to prevent failure if no local config
+                            sh 'git config --list --local || true'
                             sh 'echo "Ownership of workspace directory:"'
-                            sh 'ls -ld /var/lib/jenkins/workspace/Cortex-Cloud-Scan-Test*' // Adjust if your job name is different
+                            sh 'ls -ld /var/lib/jenkins/workspace/Cortex-Cloud-Scan-Test*'
                             // --- END DEBUGGING COMMANDS ---
 
-                        env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
-                    }
-                    // --- END Recommended Config for Dubious Ownership ---
+                            env.BRANCH = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                        }
+                        // --- END Recommended Config for Dubious Ownership ---
+
 
                     sh """
                     docker run --rm -v \$(pwd):/home/code cortexcli:${env.CORTEX_CLI_VERSION} \\
