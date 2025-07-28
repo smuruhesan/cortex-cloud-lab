@@ -85,7 +85,7 @@ pipeline {
                       --api-key-id ${env.CORTEX_API_KEY_ID} \\
                       code scan \\
                       --directory /home/code \\
-                      --repo-id smuruhesan/cortex-cloud-lab \\ // Your GitHub repo owner/name
+                      --repo-id smuruhesan/cortex-cloud-lab \\
                       --branch ${env.BRANCH} \\
                       --source JENKINS \\
                       --create-repo-if-missing
