@@ -13,6 +13,14 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Source Code') {
+            steps {
+                // This is the step that stashes your files.
+                // It is a crucial prerequisite for the 'unstash' command.
+                checkout scm
+                stash includes: '**/*', name: 'source'
+            }
+        }
         
         stage('Install Dependencies') {
             steps {
