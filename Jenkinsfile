@@ -57,7 +57,6 @@ pipeline {
             steps {
                 script {
                     unstash 'source'
-                    def branchName = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
 
                     sh """
                     ./cortexcli \
@@ -66,8 +65,8 @@ pipeline {
                       --api-key-id "${env.CORTEX_API_KEY_ID}" \
                       code scan \
                       --directory "\$(pwd)" \
-                      --smuruhesan/cortex-cloud-lab \
-                      --branch "${branchName}" \
+                      --repo-id smuruhesan/cortex-cloud-lab \
+                      --branch "main" \
                       --source "JENKINS" \
                       --create-repo-if-missing
                     """
