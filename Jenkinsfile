@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'cimg/node:22.17.0' # Replace with a suitable image or executor
+            image 'cimg/node:22.17.0'
             args '-u root'
         }
     }
@@ -58,7 +58,7 @@ pipeline {
                       --api-key-id "${env.CORTEX_API_KEY_ID}" \
                       code scan \
                       --directory "\$(pwd)" \
-                      --repo-id <REPLACE WITH REPO_OWNER/REPO_NAME> \
+                      --smuruhesan/cortex-cloud-lab \
                       --branch "${branchName}" \
                       --source "JENKINS" \
                       --create-repo-if-missing
