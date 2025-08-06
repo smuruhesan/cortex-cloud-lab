@@ -87,8 +87,6 @@ pipeline {
         stage('Deploy Azure Infrastructure (Optional)') {
             steps {
                 script {
-                    unstash 'source' // Ensure source code is available in the workspace
-
                     // --- ADDED DEBUGGING ---
                     sh 'echo "Contents of current directory before scan:"'
                     sh 'ls -l'
@@ -124,6 +122,8 @@ pipeline {
                     // The 'azure-service-principal' ID should match the credential ID you set up in Jenkins.
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
                         dir('terraform') { // Navigate to the directory containing your Terraform files
+                            // Checkout SCM directly into the terraform directory
+                            checkout scm
                             sh 'terraform init'
                             sh "terraform plan -out=tfplan -var='username=${githubUsername}'"
                             sh "terraform apply -auto-approve tfplan" // -auto-approve bypasses confirmation (use with caution)
