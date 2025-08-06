@@ -116,6 +116,10 @@ resource "azurerm_network_interface" "vulnerable_nic" {
   }
 
   # Associate the insecure NSG with this NIC
+}
+# New resource to associate the NSG with the Network Interface
+resource "azurerm_network_interface_security_group_association" "vulnerable_nic_nsg_association" {
+  network_interface_id      = azurerm_network_interface.vulnerable_nic.id
   network_security_group_id = azurerm_network_security_group.vulnerable_nsg.id
 }
 
