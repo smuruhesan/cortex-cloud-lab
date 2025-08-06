@@ -10,6 +10,8 @@ pipeline {
         CORTEX_API_KEY = credentials('CORTEX_API_KEY')
         CORTEX_API_KEY_ID = credentials('CORTEX_API_KEY_ID')
         CORTEX_API_URL = 'https://api-tac-x5.xdr.sg.paloaltonetworks.com'
+        AZURE_CREDENTIALS_ID = 'azure-service-principal'
+
     }
 
     stages {
@@ -72,6 +74,43 @@ pipeline {
                     """
                 }
             }
+
+        // NEW STAGE: Automate Azure Infrastructure Deployment
+        stage('Deploy Azure Infrastructure (Optional)') {
+            steps {
+                script {
+                    unstash 'source' // Ensure source code is available in the workspace
+        
+                    // Extract GitHub username from the repo-id for dynamic naming.
+                    // IMPORTANT: Replace 'YOUR_GITHUB_USERNAME/cortex-cloud-lab' with your actual forked repo ID.
+                    def repoId = "YOUR_GITHUB_USERNAME/cortex-cloud-lab"
+                    def githubUsername = repoId.split('/')[0]
+        
+                    // Install Terraform if not already present in the Docker image.
+                    // For production, consider using a custom Docker image with Terraform pre-installed.
+                    sh '''
+                    if ! command -v terraform &> /dev/null
+                    then
+                        echo "Terraform not found, installing..."
+                        apt update && apt install -y unzip
+                        curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip # Use a specific stable version
+                        unzip terraform_1.7.5_linux_amd64.zip
+                        mv terraform /usr/local/bin/
+                        rm terraform_1.7.5_linux_amd64.zip
+                        terraform --version
+                    fi
+                    '''
+        
+                    // Use withCredentials to inject Azure Service Principal environment variables.
+                    // The 'azure-service-principal' ID should match the credential ID you set up in Jenkins.
+                    withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
+                        dir('terraform') { // Navigate to the directory containing your Terraform files
+                            sh 'terraform init'
+                            sh "terraform plan -out=tfplan -var='username=${githubUsername}'"
+                            sh "terraform apply -auto-approve tfplan" // -auto-approve bypasses confirmation (use with caution)
+                        }
+                    }
         }
     }
 }
+
