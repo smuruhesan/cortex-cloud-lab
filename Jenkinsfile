@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'cimg/node:22.17.0'
-            // Changed to '-u root' assuming global AppArmor bypass is configured
+            // Keeping this as per your working Jenkinsfile
             // If global bypass doesn't work, this might need '--security-opt apparmor=unconfined' again
             args '-u root'
         }
@@ -141,10 +141,16 @@ pipeline {
                             sh 'terraform init'
                             sh "terraform plan -out=tfplan -var='username=${githubUsername}'"
                             sh "terraform apply -auto-approve tfplan" // -auto-approve bypasses confirmation (use with caution)
+                            
+                            // CRITICAL ADDITION: Clean up .terraform directory from within the container
+                            sh 'rm -rf .terraform' 
+                            sh 'echo "--- Deploy Stage: .terraform directory removed by container ---"'
                         }
                     }
                 }
             }
         }
+        // The automated cleanup stage is removed as per your request.
+        // You will need to perform cleanup manually via Azure CLI/Portal.
     }
 }
