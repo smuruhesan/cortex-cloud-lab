@@ -110,6 +110,8 @@ pipeline {
                             sh "terraform apply -auto-approve tfplan" // -auto-approve bypasses confirmation (use with caution)
                         }
                     }
+                }
+            }
         }
     }
 }
