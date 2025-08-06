@@ -87,6 +87,7 @@ pipeline {
         stage('Deploy Azure Infrastructure (Optional)') {
             steps {
                 script {
+                    unstash 'source'
                     // --- ADDED DEBUGGING ---
                     sh 'echo "Contents of current directory before scan:"'
                     sh 'ls -l'
@@ -96,7 +97,7 @@ pipeline {
                     
                     // Extract GitHub username from the repo-id for dynamic naming.
                     // IMPORTANT: Replace 'YOUR_GITHUB_USERNAME/cortex-cloud-lab' with your actual forked repo ID.
-                    def repoId = "YOUR_GITHUB_USERNAME/cortex-cloud-lab"
+                    def repoId = "smuruhesan/cortex-cloud-lab"
                     def githubUsername = repoId.split('/')[0]
         
                     // Install Terraform if not already present in the Docker image.
@@ -121,9 +122,10 @@ pipeline {
                     // Use withCredentials to inject Azure Service Principal environment variables.
                     // The 'azure-service-principal' ID should match the credential ID you set up in Jenkins.
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
-                        dir('terraform') { // Navigate to the directory containing your Terraform files
-                            // Checkout SCM directly into the terraform directory
-                            checkout scm
+                        dir('terraform') {
+                            sh 'echo "Contents of current directory right before terraform init (inside dir):"'
+                            sh 'ls -l .' # List contents of the current directory (which is now terraform/)
+
                             sh 'terraform init'
                             sh "terraform plan -out=tfplan -var='username=${githubUsername}'"
                             sh "terraform apply -auto-approve tfplan" // -auto-approve bypasses confirmation (use with caution)
