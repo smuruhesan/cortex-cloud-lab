@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'cimg/node:22.17.0'
-            args '-u root'
+            args '-u root --security-opt apparmor=unconfined' 
         }
     }
 
