@@ -10,8 +10,7 @@ pipeline {
         CORTEX_API_KEY = credentials('CORTEX_API_KEY')
         CORTEX_API_KEY_ID = credentials('CORTEX_API_KEY_ID')
         CORTEX_API_URL = 'https://api-tac-x5.xdr.sg.paloaltonetworks.com'
-        AZURE_CREDENTIALS_ID = 'azure-service-principal'
-
+        AZURE_CREDENTIALS_ID = 'azure-service-principal' // IMPORTANT: Replace with your Azure Service Principal credential ID
     }
 
     stages {
@@ -23,7 +22,7 @@ pipeline {
                 stash includes: '**/*', name: 'source'
             }
         }
-        
+
         stage('Install Dependencies') {
             steps {
                 sh '''
@@ -37,9 +36,9 @@ pipeline {
             steps {
                 script {
                     def response = sh(script: """
-                        curl --location '${env.CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64' \
-                          --header 'Authorization: ${env.CORTEX_API_KEY}' \
-                          --header 'x-xdr-auth-id: ${env.CORTEX_API_KEY_ID}' \
+                        curl --location '${env.CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64' \\
+                          --header 'Authorization: ${env.CORTEX_API_KEY}' \\
+                          --header 'x-xdr-auth-id: ${env.CORTEX_API_KEY_ID}' \\
                           --silent
                     """, returnStdout: true).trim()
 
@@ -61,31 +60,32 @@ pipeline {
                     unstash 'source'
 
                     sh """
-                    ./cortexcli \
-                      --api-base-url "${env.CORTEX_API_URL}" \
-                      --api-key "${env.CORTEX_API_KEY}" \
-                      --api-key-id "${env.CORTEX_API_KEY_ID}" \
-                      code scan \
-                      --directory "\$(pwd)" \
-                      --repo-id smuruhesan/cortex-cloud-lab \
-                      --branch "main" \
-                      --source "JENKINS" \
+                    ./cortexcli \\
+                      --api-base-url "${env.CORTEX_API_URL}" \\
+                      --api-key "${env.CORTEX_API_KEY}" \\
+                      --api-key-id "${env.CORTEX_API_KEY_ID}" \\
+                      code scan \\
+                      --directory "\$(pwd)" \\
+                      --repo-id smuruhesan/cortex-cloud-lab \\ // IMPORTANT: Update with your forked repo ID (e.g., YOUR_GITHUB_USERNAME/cortex-cloud-lab)
+                      --branch "main" \\
+                      --source "JENKINS" \\
                       --create-repo-if-missing
                     """
                 }
             }
+        } // <--- This is the crucial closing brace that was missing
 
         // NEW STAGE: Automate Azure Infrastructure Deployment
         stage('Deploy Azure Infrastructure (Optional)') {
             steps {
                 script {
                     unstash 'source' // Ensure source code is available in the workspace
-        
+
                     // Extract GitHub username from the repo-id for dynamic naming.
                     // IMPORTANT: Replace 'YOUR_GITHUB_USERNAME/cortex-cloud-lab' with your actual forked repo ID.
                     def repoId = "YOUR_GITHUB_USERNAME/cortex-cloud-lab"
                     def githubUsername = repoId.split('/')[0]
-        
+
                     // Install Terraform if not already present in the Docker image.
                     // For production, consider using a custom Docker image with Terraform pre-installed.
                     sh '''
@@ -100,7 +100,7 @@ pipeline {
                         terraform --version
                     fi
                     '''
-        
+
                     // Use withCredentials to inject Azure Service Principal environment variables.
                     // The 'azure-service-principal' ID should match the credential ID you set up in Jenkins.
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
@@ -115,4 +115,3 @@ pipeline {
         }
     }
 }
-
