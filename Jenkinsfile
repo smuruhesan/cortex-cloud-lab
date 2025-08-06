@@ -95,13 +95,12 @@ pipeline {
                         echo "Terraform not found, installing..."
                         apt update && apt install -y unzip
                         curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip # Use a specific stable version
-                        unzip terraform_1.7.5_linux_amd64.zip
+                        unzip -o terraform_1.7.5_linux_amd64.zip
                         mv terraform /usr/local/bin/
                         rm terraform_1.7.5_linux_amd64.zip
                         terraform --version
                     fi
-                    '''
-        
+                    '''        
                     // Use withCredentials to inject Azure Service Principal environment variables.
                     // The 'azure-service-principal' ID should match the credential ID you set up in Jenkins.
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
