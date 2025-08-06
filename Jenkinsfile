@@ -96,7 +96,7 @@ pipeline {
                         apt update && apt install -y unzip
 
                         # Clean up any existing terraform binary or directory before unzipping
-                        rm -f terraform # Remove any existing file named 'terraform'
+                        rm -rf terraform # Remove any existing file named 'terraform'
                         rm -rf /usr/local/bin/terraform # Remove if it's already installed globally
                         
                         curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip # Use a specific stable version
