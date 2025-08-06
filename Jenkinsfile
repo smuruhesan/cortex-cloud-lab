@@ -112,8 +112,13 @@ pipeline {
                         rm -f /usr/local/bin/terraform
                         rm -rf /usr/local/bin/terraform/ # Just in case it's a directory
 
-                        # Download and unzip directly to /usr/local/bin/
-                        curl -LO /usr/local/bin/terraform_1.7.5_linux_amd64.zip https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
+                        # Create /usr/local/bin if it doesn't exist (though it usually does)
+                        mkdir -p /usr/local/bin/
+
+                        # Corrected curl command: use -o for output file, URL as last argument
+                        curl -o /usr/local/bin/terraform_1.7.5_linux_amd64.zip https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
+                        
+                        # Unzip directly into /usr/local/bin/
                         unzip -o /usr/local/bin/terraform_1.7.5_linux_amd64.zip -d /usr/local/bin/
                         
                         # Remove the zip file
@@ -121,7 +126,7 @@ pipeline {
                         
                         terraform --version
                     fi
-                    '''     
+                    '''  
                     // Use withCredentials to inject Azure Service Principal environment variables.
                     // The 'azure-service-principal' ID should match the credential ID you set up in Jenkins.
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
