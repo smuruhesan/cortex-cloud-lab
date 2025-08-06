@@ -124,7 +124,7 @@ pipeline {
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
                         dir('terraform') {
                             sh 'echo "Contents of current directory right before terraform init (inside dir):"'
-                            sh 'ls -l .' # List contents of the current directory (which is now terraform/)
+                            sh 'ls -l .' // List contents of the current directory (which is now terraform/)
 
                             sh 'terraform init'
                             sh "terraform plan -out=tfplan -var='username=${githubUsername}'"
