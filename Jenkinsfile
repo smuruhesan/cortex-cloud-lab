@@ -59,7 +59,14 @@ pipeline {
             steps {
                 script {
                     unstash 'source'
-
+                    
+                    // --- ADDED DEBUGGING ---
+                    sh 'echo "Contents of current directory before scan:"'
+                    sh 'ls -l'
+                    sh 'echo "Contents of terraform/ directory before scan:"'
+                    sh 'ls -l terraform/'
+                    // --- END DEBUGGING ---
+                    
                     sh """
                     ./cortexcli \
                       --api-base-url "${env.CORTEX_API_URL}" \
@@ -81,7 +88,14 @@ pipeline {
             steps {
                 script {
                     unstash 'source' // Ensure source code is available in the workspace
-        
+
+                    // --- ADDED DEBUGGING ---
+                    sh 'echo "Contents of current directory before scan:"'
+                    sh 'ls -l'
+                    sh 'echo "Contents of terraform/ directory before scan:"'
+                    sh 'ls -l terraform/'
+                    // --- END DEBUGGING ---
+                    
                     // Extract GitHub username from the repo-id for dynamic naming.
                     // IMPORTANT: Replace 'YOUR_GITHUB_USERNAME/cortex-cloud-lab' with your actual forked repo ID.
                     def repoId = "YOUR_GITHUB_USERNAME/cortex-cloud-lab"
