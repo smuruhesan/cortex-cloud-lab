@@ -108,16 +108,28 @@ pipeline {
                         echo "Terraform not found, installing..."
                         apt update && apt install -y unzip
 
-                        # Clean up any existing terraform binary or directory before unzipping
-                        rm -rf /usr/local/bin/terraform # Remove if it's already installed globally
-                        
-                        curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip # Use a specific stable version
+                        # Clean up any existing terraform binary from its global path
+                        rm -f /usr/local/bin/terraform # Remove the binary if it exists
+                        rm -rf /usr/local/bin/terraform/ # Remove if it's a directory (unlikely for binary)
+
+                        # Create a temporary directory for extraction
+                        mkdir -p /tmp/terraform_install
+                        cd /tmp/terraform_install
+
+                        curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
                         unzip -o terraform_1.7.5_linux_amd64.zip
+                        
+                        # Move the extracted 'terraform' binary (which is a file) to /usr/local/bin/
                         mv terraform /usr/local/bin/
+                        
+                        # Clean up the temporary directory and zip file
                         rm terraform_1.7.5_linux_amd64.zip
+                        cd - # Go back to the previous directory (workspace root)
+                        rmdir /tmp/terraform_install # Remove the temporary directory
+
                         terraform --version
                     fi
-                    '''        
+                    '''       
                     // Use withCredentials to inject Azure Service Principal environment variables.
                     // The 'azure-service-principal' ID should match the credential ID you set up in Jenkins.
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
