@@ -73,5 +73,43 @@ pipeline {
                 }
             }
         }
+        stage('Deploy Azure Infrastructure') {
+            steps {
+                script {
+                    unstash 'source'
+                    
+                    // Debugging: Confirm presence of terraform files
+                    sh 'ls -la'
+                    sh 'ls -la terraform'
+                    sh 'cat terraform/main.tf'
+                    
+                    // Install terraform safely
+                    sh '''
+                        if ! command -v terraform >/dev/null; then
+                            apt update && apt install -y unzip
+                            curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
+                            unzip -o terraform_1.7.5_linux_amd64.zip
+                            mv terraform /usr/local/bin/
+                            rm terraform_1.7.5_linux_amd64.zip
+                        fi
+                        terraform version
+                    '''
+                    
+                    // Set permissions for the terraform dir
+                    sh 'chmod -R 777 terraform || true'
+                    sh 'chown -R $(id -u):$(id -g) terraform || true'
+        
+                    withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
+                        dir('terraform') {
+                            // Check again before running terraform
+                            sh 'ls -la'
+                            sh 'terraform init'
+                            sh 'terraform plan -out=tfplan'
+                            sh 'terraform apply -auto-approve tfplan'
+                        }
+                    }
+                }
+            }
+        }
     }
 }
