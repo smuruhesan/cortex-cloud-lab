@@ -1,6 +1,4 @@
-// AZURE AZ command error
-
-
+// FINAL JENKINSFILE
 
 pipeline {
     agent {
@@ -19,8 +17,6 @@ pipeline {
     stages {
         stage('Checkout Source Code') {
             steps {
-                // This is the step that stashes your files.
-                // It is a crucial prerequisite for the 'unstash' command.
                 checkout scm
                 stash includes: '**/*', name: 'source'
             }
@@ -39,9 +35,9 @@ pipeline {
             steps {
                 script {
                     def response = sh(script: """
-                        curl --location '${env.CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64' \
-                          --header 'Authorization: ${env.CORTEX_API_KEY}' \
-                          --header 'x-xdr-auth-id: ${env.CORTEX_API_KEY_ID}' \
+                        curl --location '${env.CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64' \\
+                          --header 'Authorization: ${env.CORTEX_API_KEY}' \\
+                          --header 'x-xdr-auth-id: ${env.CORTEX_API_KEY_ID}' \\
                           --silent
                     """, returnStdout: true).trim()
 
@@ -57,26 +53,25 @@ pipeline {
         }
 
         stage('Run Scan') {
-        // Replace the repo-id with your repository like: owner/repo
             steps {
                 script {
                     unstash 'source'
-
                     sh """
-                    ./cortexcli \
-                      --api-base-url "${env.CORTEX_API_URL}" \
-                      --api-key "${env.CORTEX_API_KEY}" \
-                      --api-key-id "${env.CORTEX_API_KEY_ID}" \
-                      code scan \
-                      --directory "\$(pwd)" \
-                      --repo-id smuruhesan/cortex-cloud-lab \
-                      --branch "main" \
-                      --source "JENKINS" \
+                    ./cortexcli \\
+                      --api-base-url "${env.CORTEX_API_URL}" \\
+                      --api-key "${env.CORTEX_API_KEY}" \\
+                      --api-key-id "${env.CORTEX_API_KEY_ID}" \\
+                      code scan \\
+                      --directory "\$(pwd)" \\
+                      --repo-id smuruhesan/cortex-cloud-lab \\
+                      --branch "main" \\
+                      --source "JENKINS" \\
                       --create-repo-if-missing
                     """
                 }
             }
         }
+
         stage('Install Azure CLI and Terraform') {
             steps {
                 sh '''
@@ -92,60 +87,49 @@ pipeline {
             }
         }
 
-
-
-stage('Terraform Init and Plan') {
-    steps {
-        unstash 'source'
-        withCredentials([azureServicePrincipal('azure-service-principal')]) {
-            dir('terraform') {
-                sh """
-                pwd
-                ls -l
-
-                az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                
-                export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
-                
-                # Dynamically set the username from the GIT_URL and export it to Terraform
-                export TF_VAR_username=$(echo "${GIT_URL}" | cut -d'/' -f4)
-                
-                # Dynamically set the resource group name using the username
-                RG_NAME="${TF_VAR_username}-vulnerable-terraform-rg"
-                
-                # Initialize Terraform first
-                terraform init
-                
-                # Attempt to import the existing resource group into Terraform state
-                echo "Importing existing resource group into Terraform state..."
-                terraform import azurerm_resource_group.vulnerable_rg /subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/${RG_NAME} || true
-                
-                # Now run the plan to check for changes
-                terraform plan -out=tfplan
-                """
-            }
-        }
-    }
-}
-        
-
-        stage('Terraform Apply') {
+        stage('Terraform Init and Plan') {
             steps {
                 unstash 'source'
-                sh 'ls -l'
-                sh 'pwd'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
                     dir('terraform') {
-                        sh '''
-                        ls -l
+                        sh """
                         pwd
+                        ls -l
                         
                         az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
                         
                         export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
                         
-                        terraform apply tfplan
-                        '''
+                        USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
+                        
+                        RG_NAME="${USERNAME}-vulnerable-terraform-rg"
+                        
+                        terraform init -var="username=${USERNAME}"
+                        
+                        echo "Importing existing resource group into Terraform state..."
+                        terraform import -var="username=${USERNAME}" azurerm_resource_group.vulnerable_rg /subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/${RG_NAME} || true
+                        
+                        terraform plan -out=tfplan -var="username=${USERNAME}"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                unstash 'source'
+                withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                    dir('terraform') {
+                        sh """
+                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                        
+                        export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
+                        
+                        USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
+                        
+                        terraform apply -var="username=${USERNAME}" tfplan
+                        """
                     }
                 }
             }
@@ -156,10 +140,13 @@ stage('Terraform Init and Plan') {
         always {
             echo 'Cleaning up Azure resources...'
             withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                sh '''
+                sh """
+                USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
+                
                 if [ -x "$(command -v terraform)" ]; then
                   echo "Terraform is installed. Proceeding with destroy."
-                  terraform destroy -auto-approve
+                  RG_NAME="${USERNAME}-vulnerable-terraform-rg"
+                  terraform destroy -auto-approve -var="username=${USERNAME}"
                 else
                   echo "Terraform is not found. Installing for cleanup..."
                   curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
@@ -167,9 +154,9 @@ stage('Terraform Init and Plan') {
                   unzip -o terraform.zip
                   chmod +x terraform
                   mv terraform /usr/local/bin/
-                  terraform destroy -auto-approve
+                  terraform destroy -auto-approve -var="username=${USERNAME}"
                 fi
-                '''
+                """
             }
             echo 'Cleaning up the workspace...'
             cleanWs()
