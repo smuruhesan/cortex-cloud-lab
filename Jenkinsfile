@@ -1,5 +1,5 @@
 // AZURE AZ command error
-Rest works
+
 
 
 pipeline {
