@@ -88,21 +88,27 @@ pipeline {
         stage('Terraform Init and Plan') {
             steps {
                 unstash 'source'
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    sh '''
-                    az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                    terraform init
-                    terraform plan -out=tfplan
-                    '''
+                // Change the current working directory to the 'terraform' folder
+                dir('terraform-directory') { // Replace 'terraform-directory' with your actual folder name
+                    withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                        sh '''
+                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                        terraform init
+                        terraform plan -out=tfplan
+                        '''
+                    }
                 }
             }
         }
-
+        
         stage('Terraform Apply') {
             steps {
                 unstash 'source'
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    sh 'terraform apply tfplan'
+                // Again, change the current working directory to the 'terraform' folder
+                dir('terraform-directory') { // Replace 'terraform-directory' with your actual folder name
+                    withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                        sh 'terraform apply tfplan'
+                    }
                 }
             }
         }
@@ -112,19 +118,22 @@ pipeline {
         always {
             echo 'Cleaning up Azure resources...'
             withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                sh '''
-                if [ -x "$(command -v terraform)" ]; then
-                  echo "Terraform is installed. Proceeding with destroy."
-                  terraform destroy -auto-approve
-                else
-                  echo "Terraform is not found. Installing for cleanup..."
-                  curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                  unzip -o terraform.zip
-                  chmod +x terraform
-                  mv terraform /usr/local/bin/
-                  terraform destroy -auto-approve
-                fi
-                '''
+                dir('terraform-directory') { // Replace 'terraform-directory' with your actual folder name
+                    sh '''
+                    if [ -x "$(command -v terraform)" ]; then
+                      echo "Terraform is installed. Proceeding with destroy."
+                      terraform destroy -auto-approve
+                    else
+                      echo "Terraform is not found. Installing for cleanup..."
+                      curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                      rm -rf terraform
+                      unzip -o terraform.zip
+                      chmod +x terraform
+                      mv terraform /usr/local/bin/
+                      terraform destroy -auto-approve
+                    fi
+                    '''
+                }
             }
             echo 'Cleaning up the workspace...'
             cleanWs()
