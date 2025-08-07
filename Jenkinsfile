@@ -87,53 +87,53 @@ pipeline {
             }
         }
 
-        stage('Terraform Init and Plan') {
-            steps {
-                unstash 'source'
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    dir('terraform') {
-                        sh """
-                        pwd
-                        ls -l
-                        
-                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                        
-                        export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
-                        
-                        USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
-                        
-                        RG_NAME="${USERNAME}-vulnerable-terraform-rg"
-                        
-                        terraform init -var="username=${USERNAME}"
-                        
-                        echo "Importing existing resource group into Terraform state..."
-                        terraform import -var="username=${USERNAME}" azurerm_resource_group.vulnerable_rg /subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/${RG_NAME} || true
-                        
-                        terraform plan -out=tfplan -var="username=${USERNAME}"
-                        """
+                        stage('Terraform Init and Plan') {
+                    steps {
+                        unstash 'source'
+                        withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                            dir('terraform') {
+                                sh """
+                                    pwd
+                                    ls -l
+                
+                                    az login --service-principal -u \$AZURE_CLIENT_ID -p \$AZURE_CLIENT_SECRET --tenant \$AZURE_TENANT_ID
+                
+                                    export ARM_SUBSCRIPTION_ID="\\\${AZURE_SUBSCRIPTION_ID}"
+                                    
+                                    USERNAME=\$(echo "\\\${GIT_URL}" | cut -d'/' -f4)
+                                    
+                                    RG_NAME="\${USERNAME}-vulnerable-terraform-rg"
+                                    
+                                    terraform init -var="username=\${USERNAME}"
+                                    
+                                    echo "Importing existing resource group into Terraform state..."
+                                    terraform import -var="username=\${USERNAME}" azurerm_resource_group.vulnerable_rg /subscriptions/\${ARM_SUBSCRIPTION_ID}/resourceGroups/\${RG_NAME} || true
+                                    
+                                    terraform plan -out=tfplan -var="username=\${USERNAME}"
+                                """
+                            }
+                        }
                     }
                 }
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                unstash 'source'
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    dir('terraform') {
-                        sh """
-                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                        
-                        export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
-                        
-                        USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
-                        
-                        terraform apply -var="username=${USERNAME}" tfplan
-                        """
+                
+                stage('Terraform Apply') {
+                    steps {
+                        unstash 'source'
+                        withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                            dir('terraform') {
+                                sh """
+                                    az login --service-principal -u \$AZURE_CLIENT_ID -p \$AZURE_CLIENT_SECRET --tenant \$AZURE_TENANT_ID
+                                    
+                                    export ARM_SUBSCRIPTION_ID="\\\${AZURE_SUBSCRIPTION_ID}"
+                                    
+                                    USERNAME=\$(echo "\\\${GIT_URL}" | cut -d'/' -f4)
+                                    
+                                    terraform apply -var="username=\${USERNAME}" tfplan
+                                """
+                            }
+                        }
                     }
                 }
-            }
-        }
     }
 
     post {
