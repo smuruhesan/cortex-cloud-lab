@@ -111,7 +111,8 @@ pipeline {
                         export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
         
                         # Dynamically set the username from the GIT_URL
-                        USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
+
+                        export TF_VAR_username="${USERNAME}"
                         
                         # Dynamically set the resource group name using the username
                         RG_NAME="${USERNAME}-vulnerable-terraform-rg"
