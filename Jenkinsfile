@@ -1,10 +1,9 @@
-// FINAL JENKINSFILE
+// WORKING
 
 pipeline {
     agent {
         docker {
             image 'cimg/node:22.17.0'
-            // Use the root user for all stages to avoid permission issues
             args '-u root'
         }
     }
@@ -12,12 +11,14 @@ pipeline {
     environment {
         CORTEX_API_KEY = credentials('CORTEX_API_KEY')
         CORTEX_API_KEY_ID = credentials('CORTEX_API_KEY_ID')
-        CORTEX_API_URL = 'https://api-tac-x5.xdr.sg.paloaltonworks.com'
+        CORTEX_API_URL = 'https://api-tac-x5.xdr.sg.paloaltonetworks.com'
     }
 
     stages {
         stage('Checkout Source Code') {
             steps {
+                // This is the step that stashes your files.
+                // It is a crucial prerequisite for the 'unstash' command.
                 checkout scm
                 stash includes: '**/*', name: 'source'
             }
@@ -27,7 +28,7 @@ pipeline {
             steps {
                 sh '''
                 apt update
-                apt install -y curl jq git unzip
+                apt install -y curl jq git
                 '''
             }
         }
@@ -36,9 +37,9 @@ pipeline {
             steps {
                 script {
                     def response = sh(script: """
-                        curl --location '${env.CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64' \\
-                          --header 'Authorization: ${env.CORTEX_API_KEY}' \\
-                          --header 'x-xdr-auth-id: ${env.CORTEX_API_KEY_ID}' \\
+                        curl --location '${env.CORTEX_API_URL}/public_api/v1/unified-cli/releases/download-link?os=linux&architecture=amd64' \
+                          --header 'Authorization: ${env.CORTEX_API_KEY}' \
+                          --header 'x-xdr-auth-id: ${env.CORTEX_API_KEY_ID}' \
                           --silent
                     """, returnStdout: true).trim()
 
@@ -54,38 +55,26 @@ pipeline {
         }
 
         stage('Run Scan') {
+        // Replace the repo-id with your repository like: owner/repo
             steps {
                 script {
                     unstash 'source'
+
                     sh """
-                    ./cortexcli \\
-                      --api-base-url "${env.CORTEX_API_URL}" \\
-                      --api-key "${env.CORTEX_API_KEY}" \\
-                      --api-key-id "${env.CORTEX_API_KEY_ID}" \\
-                      code scan \\
-                      --directory "\$(pwd)" \\
-                      --repo-id smuruhesan/cortex-cloud-lab \\
-                      --branch "main" \\
-                      --source "JENKINS" \\
+                    ./cortexcli \
+                      --api-base-url "${env.CORTEX_API_URL}" \
+                      --api-key "${env.CORTEX_API_KEY}" \
+                      --api-key-id "${env.CORTEX_API_KEY_ID}" \
+                      code scan \
+                      --directory "\$(pwd)" \
+                      --repo-id smuruhesan/cortex-cloud-lab \
+                      --branch "main" \
+                      --source "JENKINS" \
                       --create-repo-if-missing
                     """
                 }
             }
         }
-
-        stage('Install Terraform') {
-            steps {
-                sh '''
-                curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                rm -rf terraform
-                unzip -o terraform.zip
-                chmod +x terraform
-                mv terraform /usr/local/bin/
-                terraform --version
-                '''
-            }
-        }
-
         stage('Terraform Init and Plan') {
             steps {
                 unstash 'source'
