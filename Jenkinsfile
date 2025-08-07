@@ -2,7 +2,8 @@ pipeline {
     agent {
         docker {
             image 'cimg/node:22.17.0'
-            // THIS IS THE CRUCIAL FIX. It bypasses the AppArmor permission issue.
+            // The pipeline log indicates the container runs as root.
+            // The `args` line is a good practice for bypassing AppArmor issues, but not the direct fix for the unstash permission problem.
             args '-u root --security-opt apparmor=unconfined'
         }
     }
@@ -17,7 +18,6 @@ pipeline {
     stages {
         stage('Checkout Source Code') {
             steps {
-                // The cleanup is now handled in the 'post' section.
                 checkout scm
                 stash includes: '**/*', name: 'source'
             }
@@ -62,13 +62,13 @@ pipeline {
             steps {
                 script {
                     unstash 'source'
-                    // Permission fix for stashed files
-                    sh 'chmod -R 777 terraform || true'
-                    sh 'chown -R $(id -u):$(id -g) terraform || true'
+                    // Fix permissions on the unstashed files
+                    sh 'chmod -R 777 terraform'
+                    sh 'chown -R $(id -u):$(id -g) terraform'
 
                     // Debug directory
                     sh 'ls -l'
-                    sh 'ls -l terraform || true'
+                    sh 'ls -l terraform'
 
                     sh """
                         ./cortexcli \\
@@ -89,58 +89,29 @@ pipeline {
         stage('Deploy Azure Infrastructure') {
             steps {
                 script {
-                    unstash 'source'
-                    // Permission fix for stashed files
-                    sh 'chmod -R 777 terraform || true'
-                    sh 'chown -R $(id -u):$(id -g) terraform || true'
-
-                    // Debug directory
-                    sh 'ls -l'
-                    sh 'ls -l terraform || true'
-                    sh 'cat terraform/main.tf || true'
-
-                    // Install Terraform if necessary (do NOT delete any folder named 'terraform'!)
+                    // Use a temporary block to run as the root user for the unstash command
+                    withDockerContainer(image: 'cimg/node:22.17.0', args: '-u root') {
+                         unstash 'source'
+                    }
+                    // The rest of the stage can run under the regular container user
                     sh '''
-                        if ! command -v terraform >/dev/null; then
-                            echo "Terraform not found, installing..."
-                            curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
-                            unzip -o terraform_1.7.5_linux_amd64.zip
-                            mv terraform /usr/local/bin/
-                            rm terraform_1.7.5_linux_amd64.zip
-                        fi
-                        terraform -version
+                        chmod -R 777 terraform || true
+                        chown -R $(id -u):$(id -g) terraform || true
+                        ls -l
+                        ls -l terraform || true
+                        cat terraform/main.tf || true
                     '''
-
-                    // This should match your GitHub repo structure (change if needed)
-                    def repoId = "smuruhesan/cortex-cloud-lab"
-                    def githubUsername = repoId.split('/')[0]
-
-                    // Use Jenkins Azure SP credential, will set env vars for terraform-azure provider
+                    // Install Terraform and deploy...
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
                         dir('terraform') {
-                            sh 'ls -l' // Sanity check again
-                            sh 'rm -f .terraform.lock.hcl || true'
-                            sh 'terraform init'
-                            // If you want to pass vars: change below as needed
-                            sh """terraform plan -out=tfplan -var='username=${githubUsername}' || terraform plan -out=tfplan"""
-                            // 'username' is just an example, make sure you have a variable block for it
-                            sh 'terraform apply -auto-approve tfplan'
-                            // The post-build script will handle the .terraform folder cleanup.
+                             sh 'ls -l'
+                             sh 'rm -f .terraform.lock.hcl || true'
+                             sh 'terraform init'
+                             sh "terraform plan -out=tfplan -var='username=${githubUsername}' || terraform plan -out=tfplan"
+                             sh 'terraform apply -auto-approve tfplan'
                         }
                     }
                 }
-            }
-        }
-    }
-    
-    // NEW: Post-build actions for cleanup
-    post {
-        always {
-            script {
-                // Forcefully remove the .terraform directory from within the container
-                // This prevents the "Operation not permitted" error on the next build's deleteDir() step
-                sh 'rm -rf terraform/.terraform || true'
-                sh 'echo "Post-build cleanup completed. The .terraform directory has been removed."'
             }
         }
     }
