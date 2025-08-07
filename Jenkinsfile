@@ -135,29 +135,32 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            echo 'Cleaning up Azure resources...'
-            withCredentials([azureServicePrincipal('azure-service-principal')]) {
+post {
+    always {
+        echo 'Cleaning up Azure resources...'
+        withCredentials([azureServicePrincipal('azure-service-principal')]) {
+            dir('terraform') { // Add this line
                 sh '''
-                USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
-            
-                if [ -x "$(command -v terraform)" ]; then
-                    echo "Terraform is installed. Proceeding with destroy." 
-                    terraform destroy -auto-approve -var="username=${USERNAME}" 
-                else
-                    echo "Terraform is not found. Installing for cleanup..."
-                    curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                    rm -rf terraform
-                    unzip -o terraform.zip
-                    chmod +x terraform
-                    mv terraform /usr/local/bin/
-                    terraform destroy -auto-approve -var="username=${USERNAME}"
-                fi
-            '''            }
-            echo 'Cleaning up the workspace...'
-            cleanWs()
-            echo 'Cleanup complete.'
+                    USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
+                    
+                    if [ -x "$(command -v terraform)" ]; then
+                        echo "Terraform is installed. Proceeding with destroy."
+                        terraform destroy -auto-approve -var="username=${USERNAME}"
+                    else
+                        echo "Terraform is not found. Installing for cleanup..."
+                        curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                        rm -rf terraform
+                        unzip -o terraform.zip
+                        chmod +x terraform
+                        mv terraform /usr/local/bin/
+                        terraform destroy -auto-approve -var="username=${USERNAME}"
+                    fi
+                '''
+            } // Add this line
         }
+        echo 'Cleaning up the workspace...'
+        cleanWs()
+        echo 'Cleanup complete.'
     }
+}
 }
