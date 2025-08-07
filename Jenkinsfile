@@ -119,9 +119,16 @@ pipeline {
                 unstash 'source'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
                     dir('terraform-directory/terraform') {
-                        sh 'ls -l'
-                        sh 'pwd'
-                        sh 'terraform apply tfplan'
+                        sh '''
+                        ls -l
+                        pwd
+                        
+                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                        
+                        export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
+                        
+                        terraform apply tfplan
+                        '''
                     }
                 }
             }
