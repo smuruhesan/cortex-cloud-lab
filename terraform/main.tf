@@ -98,7 +98,8 @@ resource "azurerm_public_ip" "vulnerable_public_ip" {
   name                = "${var.username}-vulnerable-public-ip"
   location            = azurerm_resource_group.vulnerable_rg.location
   resource_group_name = azurerm_resource_group.vulnerable_rg.name
-  allocation_method   = "Dynamic" # Dynamic IP can change, but still exposes.
+  allocation_method   = "Dynamic"
+  sku                 = "Basic" # Changed from Standard to Basic to allow for Dynamic allocation
 }
 
 # 4. Network Interface with Insecure NSG Association
