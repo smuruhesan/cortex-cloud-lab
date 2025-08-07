@@ -100,7 +100,7 @@ pipeline {
                 sh 'ls -l'
                 sh 'pwd'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    dir('terraform-directory/terraform') {
+                    dir('terraform') {
                         
                         sh '''
                         pwd
@@ -135,8 +135,10 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 unstash 'source'
+                sh 'ls -l'
+                sh 'pwd'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    dir('terraform-directory/terraform') {
+                    dir('terraform') {
                         sh '''
                         ls -l
                         pwd
