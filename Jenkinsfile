@@ -19,6 +19,7 @@ pipeline {
             steps {
                 // This is the step that stashes your files.
                 // It is a crucial prerequisite for the 'unstash' command.
+                deleteDir() // Clean start!
                 checkout scm
                 stash includes: '**/*', name: 'source'
             }
