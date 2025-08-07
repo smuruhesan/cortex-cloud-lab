@@ -75,7 +75,28 @@ pipeline {
                 }
             }
         }
+        stage('Install Terraform') {
+            agent {
+                // Use a dedicated Docker image with Terraform and Azure CLI pre-installed
+                docker {
+                    image 'hashicorp/terraform:1.5.7'
+                    args '-u root'
+                }
+            }
+            steps {
+                // Terraform is already installed, so this stage is simplified
+                sh 'terraform --version'
+                sh 'az --version'
+            }
+        }
+
         stage('Terraform Init and Plan') {
+            agent {
+                docker {
+                    image 'hashicorp/terraform:1.5.7'
+                    args '-u root'
+                }
+            }
             steps {
                 unstash 'source'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
@@ -87,37 +108,13 @@ pipeline {
                 }
             }
         }
-
-        stage('Terraform Apply') {
-            steps {
-                unstash 'source'
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    sh 'terraform apply tfplan'
-                }
-            }
-        }
     }
 
     post {
         always {
-            echo 'Cleaning up Azure resources...'
-            withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                sh '''
-                if [ -x "$(command -v terraform)" ]; then
-                  echo "Terraform is installed. Proceeding with destroy."
-                  terraform destroy -auto-approve
-                else
-                  echo "Terraform is not found. Installing for cleanup..."
-                  curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                  rm -rf terraform
-                  unzip -o terraform.zip
-                  chmod +x terraform
-                  mv terraform /usr/local/bin/
-                  terraform destroy -auto-approve
-                fi
-                '''
-            }
             echo 'Cleaning up the workspace...'
+            // The `cleanWs()` step handles both the Jenkins workspace and the local Terraform environment
+            // by deleting all files and directories in the job's workspace.
             cleanWs()
             echo 'Cleanup complete.'
         }
