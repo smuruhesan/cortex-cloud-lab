@@ -95,43 +95,41 @@ pipeline {
 
 
         stage('Terraform Init and Plan') {
-            steps {
-                unstash 'source'
-                sh 'ls -l'
-                sh 'pwd'
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    dir('terraform') {
-                        
-                        sh '''
-                        pwd
-                        ls -l
-                        
-        
-                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                        
-                        export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
+    steps {
+        unstash 'source'
+        withCredentials([azureServicePrincipal('azure-service-principal')]) {
+            dir('terraform') {
+                sh """
+                pwd
+                ls -l
 
-                        # Dynamically set the username from the GIT_URL and export it to Terraform
-                        export TF_VAR_username=$(echo "${GIT_URL}" | cut -d'/' -f4)
-        
-                        
-                        # Dynamically set the resource group name using the username
-                        RG_NAME="${TF_VAR_username}-vulnerable-terraform-rg"
-        
-                        # Initialize Terraform first
-                        terraform init
-        
-                        # Attempt to import the existing resource group into Terraform state
-                        echo "Importing existing resource group into Terraform state..."
-                        terraform import azurerm_resource_group.vulnerable_rg /subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/${RG_NAME} || true
-        
-                        # Now run the plan to check for changes
-                        terraform plan -out=tfplan
-                        '''
-                    }
-                }
+                az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                
+                export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
+
+                # Dynamically set the username from the GIT_URL
+                USERNAME=$(echo "${GIT_URL}" | cut -d'/' -f4)
+                
+                # Set the TF_VAR_username environment variable to override tfvars
+                export TF_VAR_username="${USERNAME}"
+                
+                # Dynamically set the resource group name using the username
+                RG_NAME="${USERNAME}-vulnerable-terraform-rg"
+                
+                # Initialize Terraform with the correct username
+                terraform init
+                
+                # Attempt to import the existing resource group into Terraform state
+                echo "Importing existing resource group into Terraform state..."
+                terraform import azurerm_resource_group.vulnerable_rg /subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/${RG_NAME} || true
+                
+                # Now run the plan to check for changes
+                terraform plan -out=tfplan
+                """
             }
         }
+    }
+}
         
 
         stage('Terraform Apply') {
