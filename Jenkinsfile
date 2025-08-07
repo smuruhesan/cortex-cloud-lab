@@ -77,21 +77,22 @@ pipeline {
         }
 
 
-        stage('Install Terraform') {
+        stage('Install Terraform and Azure CLI') {
             agent {
                 docker {
-                    image 'mcr.microsoft.com/azure-cli:latest'
+                    image 'ubuntu:latest'
                     args '-u root'
                 }
             }
             steps {
                 sh '''
-                # Install Terraform inside the Azure CLI container
+                apt-get update && apt-get install -y curl unzip
+                curl -sL https://aka.ms/InstallAzureCliDeb | bash
                 curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
                 rm -rf terraform
                 unzip -o terraform.zip
-                chmod +x terraform
                 mv terraform /usr/local/bin/
+                az --version
                 terraform --version
                 '''
             }
@@ -100,7 +101,7 @@ pipeline {
         stage('Terraform Init and Plan') {
             agent {
                 docker {
-                    image 'mcr.microsoft.com/azure-cli:latest'
+                    image 'ubuntu:latest'
                     args '-u root'
                 }
             }
@@ -117,6 +118,12 @@ pipeline {
         }
 
         stage('Terraform Apply') {
+            agent {
+                docker {
+                    image 'ubuntu:latest'
+                    args '-u root'
+                }
+            }
             steps {
                 unstash 'source'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
@@ -125,12 +132,10 @@ pipeline {
             }
         }
     }
-
+    
     post {
         always {
             echo 'Cleaning up the workspace...'
-            // The `cleanWs()` step handles both the Jenkins workspace and the local Terraform environment
-            // by deleting all files and directories in the job's workspace.
             cleanWs()
             echo 'Cleanup complete.'
         }
