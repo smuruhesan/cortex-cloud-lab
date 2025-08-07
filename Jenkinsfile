@@ -77,26 +77,25 @@ pipeline {
         }
 
 
-        stage('Install Terraform and Azure CLI') {
-            agent {
-                docker {
-                    image 'ubuntu:latest'
-                    args '-u root'
+            stage('Install Terraform and Azure CLI') {
+                agent {
+                    docker {
+                        image 'ubuntu:latest'
+                        args '-u root'
+                    }
+                }
+                steps {
+                    sh 'apt-get update'
+                    sh 'apt-get install -y curl unzip'
+                    sh 'curl -sL https://aka.ms/InstallAzureCliDeb | bash'
+                    sh 'curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip'
+                    sh 'rm -rf terraform'
+                    sh 'unzip -o terraform.zip'
+                    sh 'mv terraform /usr/local/bin/'
+                    sh 'az --version'
+                    sh 'terraform --version'
                 }
             }
-            steps {
-                sh '''
-                apt-get update && apt-get install -y curl unzip
-                curl -sL https://aka.ms/InstallAzureCliDeb | bash
-                curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                rm -rf terraform
-                unzip -o terraform.zip
-                mv terraform /usr/local/bin/
-                az --version
-                terraform --version
-                '''
-            }
-        }
 
         stage('Terraform Init and Plan') {
             agent {
