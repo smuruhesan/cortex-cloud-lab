@@ -77,6 +77,20 @@ pipeline {
                 }
             }
         }
+        stage('Install Azure CLI and Terraform') {
+            steps {
+                sh '''
+                apt-get update && apt-get install -y curl unzip
+                curl -sL https://aka.ms/InstallAzureCliDeb | bash
+                curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                rm -rf terraform
+                unzip -o terraform.zip
+                mv terraform /usr/local/bin/
+                az --version
+                terraform --version
+                '''
+            }
+        }
         stage('Terraform Init and Plan') {
             steps {
                 unstash 'source'
