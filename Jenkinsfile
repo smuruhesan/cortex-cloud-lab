@@ -82,7 +82,7 @@ pipeline {
                 sh '''
                 apt-get update && apt-get install -y curl unzip
                 curl -sL https://aka.ms/InstallAzureCliDeb | bash
-                curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                curl -o terraform.zip https://releases.hashicorp.com/terraform/1.12.2/terraform_1.12.2_linux_amd64.zip
                 rm -rf terraform
                 unzip -o terraform.zip
                 mv terraform /usr/local/bin/
@@ -94,12 +94,14 @@ pipeline {
         stage('Terraform Init and Plan') {
             steps {
                 unstash 'source'
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    sh '''
-                    az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                    terraform init
-                    terraform plan -out=tfplan
-                    '''
+                dir('terraform-directory') { // Replace 'terraform-directory' with your actual folder name
+                    withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                        sh '''
+                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                        terraform init
+                        terraform plan -out=tfplan
+                        '''
+                    }
                 }
             }
         }
