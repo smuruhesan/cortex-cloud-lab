@@ -1,4 +1,6 @@
-// WORKING
+// AZURE AZ command error
+Rest works
+
 
 pipeline {
     agent {
@@ -75,35 +77,7 @@ pipeline {
                 }
             }
         }
-
-
-            stage('Install Terraform and Azure CLI') {
-                agent {
-                    docker {
-                        image 'ubuntu:latest'
-                        args '-u root'
-                    }
-                }
-                steps {
-                    sh 'apt-get update'
-                    sh 'apt-get install -y curl unzip'
-                    sh 'curl -sL https://aka.ms/InstallAzureCliDeb | bash'
-                    sh 'curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip'
-                    sh 'rm -rf terraform'
-                    sh 'unzip -o terraform.zip'
-                    sh 'mv terraform /usr/local/bin/'
-                    sh 'az --version'
-                    sh 'terraform --version'
-                }
-            }
-
         stage('Terraform Init and Plan') {
-            agent {
-                docker {
-                    image 'ubuntu:latest'
-                    args '-u root'
-                }
-            }
             steps {
                 unstash 'source'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
@@ -117,12 +91,6 @@ pipeline {
         }
 
         stage('Terraform Apply') {
-            agent {
-                docker {
-                    image 'ubuntu:latest'
-                    args '-u root'
-                }
-            }
             steps {
                 unstash 'source'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
@@ -131,9 +99,26 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
+            echo 'Cleaning up Azure resources...'
+            withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                sh '''
+                if [ -x "$(command -v terraform)" ]; then
+                  echo "Terraform is installed. Proceeding with destroy."
+                  terraform destroy -auto-approve
+                else
+                  echo "Terraform is not found. Installing for cleanup..."
+                  curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                  rm -rf terraform
+                  unzip -o terraform.zip
+                  chmod +x terraform
+                  mv terraform /usr/local/bin/
+                  terraform destroy -auto-approve
+                fi
+                '''
+            }
             echo 'Cleaning up the workspace...'
             cleanWs()
             echo 'Cleanup complete.'
