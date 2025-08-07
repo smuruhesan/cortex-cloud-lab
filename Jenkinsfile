@@ -93,17 +93,17 @@ pipeline {
         }
         stage('Terraform Init and Plan') {
             steps {
-                // This is a new 'dir' block to ensure unstashing happens in the correct place
-                dir('terraform-directory') { // Replace 'terraform-directory' with your actual folder name
-                    unstash 'source'
-                    sh 'ls -l' // Add this command to list files after unstashing
-                }
+                unstash 'source'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    dir('terraform-directory/terraform') { // Now the Terraform commands run from the correct directory
+                    dir('terraform-directory/terraform') {
                         sh '''
-                        pwd
-                        ls -l
+                        # Log in to Azure with the service principal
                         az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+        
+                        # Export the subscription ID for the Terraform azurerm provider
+                        export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
+        
+                        # Run Terraform commands
                         terraform init
                         terraform plan -out=tfplan
                         '''
