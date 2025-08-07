@@ -4,6 +4,7 @@ pipeline {
     agent {
         docker {
             image 'cimg/node:22.17.0'
+            // Use the root user for all stages to avoid permission issues
             args '-u root'
         }
     }
@@ -11,7 +12,7 @@ pipeline {
     environment {
         CORTEX_API_KEY = credentials('CORTEX_API_KEY')
         CORTEX_API_KEY_ID = credentials('CORTEX_API_KEY_ID')
-        CORTEX_API_URL = 'https://api-tac-x5.xdr.sg.paloaltonetworks.com'
+        CORTEX_API_URL = 'https://api-tac-x5.xdr.sg.paloaltonworks.com'
     }
 
     stages {
@@ -111,12 +112,22 @@ pipeline {
         always {
             echo 'Cleaning up Azure resources...'
             withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                sh 'terraform destroy -auto-approve'
+                sh '''
+                if [ -x "$(command -v terraform)" ]; then
+                  echo "Terraform is installed. Proceeding with destroy."
+                  terraform destroy -auto-approve
+                else
+                  echo "Terraform is not found. Installing for cleanup..."
+                  curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                  unzip terraform.zip
+                  chmod +x terraform
+                  mv terraform /usr/local/bin/
+                  terraform destroy -auto-approve
+                fi
+                '''
             }
-
             echo 'Cleaning up the workspace...'
             cleanWs()
-
             echo 'Cleanup complete.'
         }
     }
