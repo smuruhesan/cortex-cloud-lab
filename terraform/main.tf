@@ -4,8 +4,14 @@
 # Define a variable for the user's username
 # This will be used to prefix resource names for easier identification and cleanup.
 variable "username" {
-  description = "Your GitHub username or a unique identifier to prefix resources. Please update this in terraform.tfvars."
+  description = "Your GitHub username or a unique identifier to prefix resources."
   type        = string
+  default     = "PANW-USERNAME-PLACEHOLDER"
+
+  validation {
+    condition     = var.username != "PANW-USERNAME-PLACEHOLDER"
+    error_message = "The 'username' variable must be updated. Please replace 'PANW-USERNAME-PLACEHOLDER'."
+  }
 }
 
 # Configure the Azure provider
