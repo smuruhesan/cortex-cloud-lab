@@ -97,6 +97,9 @@ pipeline {
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
                     dir('terraform-directory/terraform') {
                         sh '''
+                        # Print current working directory and list files
+                        pwd
+                        ls -l
                         # Log in to Azure with the service principal
                         az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
         
@@ -116,7 +119,11 @@ pipeline {
             steps {
                 unstash 'source'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    sh 'terraform apply tfplan'
+                    dir('terraform-directory/terraform') {
+                        sh 'ls -l'
+                        sh 'pwd'
+                        sh 'terraform apply tfplan'
+                    }
                 }
             }
         }
