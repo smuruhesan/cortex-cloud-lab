@@ -75,25 +75,32 @@ pipeline {
                 }
             }
         }
+
+
         stage('Install Terraform') {
             agent {
-                // Use a dedicated Docker image with Terraform and Azure CLI pre-installed
                 docker {
-                    image 'hashicorp/terraform:1.5.7'
+                    image 'mcr.microsoft.com/azure-cli:latest'
                     args '-u root'
                 }
             }
             steps {
-                // Terraform is already installed, so this stage is simplified
-                sh 'terraform --version'
-                sh 'az --version'
+                sh '''
+                # Install Terraform inside the Azure CLI container
+                curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+                rm -rf terraform
+                unzip -o terraform.zip
+                chmod +x terraform
+                mv terraform /usr/local/bin/
+                terraform --version
+                '''
             }
         }
 
         stage('Terraform Init and Plan') {
             agent {
                 docker {
-                    image 'hashicorp/terraform:1.5.7'
+                    image 'mcr.microsoft.com/azure-cli:latest'
                     args '-u root'
                 }
             }
@@ -105,6 +112,15 @@ pipeline {
                     terraform init
                     terraform plan -out=tfplan
                     '''
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                unstash 'source'
+                withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                    sh 'terraform apply tfplan'
                 }
             }
         }
