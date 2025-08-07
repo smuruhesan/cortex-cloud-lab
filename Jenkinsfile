@@ -99,6 +99,9 @@ pipeline {
                         sh '''
                         pwd
                         ls -l
+                        cd terraform
+                        ls -l
+                        pwd
                         az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
                         
                         export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
