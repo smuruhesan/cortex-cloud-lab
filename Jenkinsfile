@@ -97,8 +97,11 @@ pipeline {
         stage('Terraform Init and Plan') {
             steps {
                 unstash 'source'
+                sh 'ls -l'
+                sh 'pwd'
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
                     dir('terraform-directory/terraform') {
+                        
                         sh '''
                         pwd
                         ls -l
