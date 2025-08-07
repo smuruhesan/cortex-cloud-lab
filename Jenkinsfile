@@ -93,10 +93,16 @@ pipeline {
         }
         stage('Terraform Init and Plan') {
             steps {
-                unstash 'source'
+                // This is a new 'dir' block to ensure unstashing happens in the correct place
                 dir('terraform-directory') { // Replace 'terraform-directory' with your actual folder name
-                    withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                    unstash 'source'
+                    sh 'ls -l' // Add this command to list files after unstashing
+                }
+                withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                    dir('terraform-directory') { // Now the Terraform commands run from the correct directory
                         sh '''
+                        pwd
+                        ls -l
                         az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
                         terraform init
                         terraform plan -out=tfplan
