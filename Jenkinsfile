@@ -99,7 +99,7 @@ pipeline {
                     sh 'ls -l' // Add this command to list files after unstashing
                 }
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    dir('terraform-directory') { // Now the Terraform commands run from the correct directory
+                    dir('terraform-directory/terraform') { // Now the Terraform commands run from the correct directory
                         sh '''
                         pwd
                         ls -l
