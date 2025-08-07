@@ -71,6 +71,7 @@ pipeline {
                       --branch "main" \
                       --source "JENKINS" \
                       --create-repo-if-missing
+                      --exclude-category IaC
                     """
                 }
             }
