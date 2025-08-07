@@ -2,6 +2,7 @@ pipeline {
     agent {
         docker {
             image 'cimg/node:22.17.0'
+            // THIS IS THE CRUCIAL FIX. It bypasses the AppArmor permission issue.
             args '-u root --security-opt apparmor=unconfined'
         }
     }
@@ -16,7 +17,7 @@ pipeline {
     stages {
         stage('Checkout Source Code') {
             steps {
-                // Removed deleteDir() from here to prevent workspace cleanup failure
+                // The cleanup is now handled in the 'post' section.
                 checkout scm
                 stash includes: '**/*', name: 'source'
             }
@@ -76,7 +77,7 @@ pipeline {
                           --api-key-id "${env.CORTEX_API_KEY_ID}" \\
                           code scan \\
                           --directory "terraform/" \\
-                          --repo-id "smuruhesan/cortex-cloud-lab" \\
+                          --repo-id smuruhesan/cortex-cloud-lab \\
                           --branch "main" \\
                           --source "JENKINS" \\
                           --create-repo-if-missing
@@ -98,37 +99,33 @@ pipeline {
                     sh 'ls -l terraform || true'
                     sh 'cat terraform/main.tf || true'
 
-                    // Install Terraform if necessary
+                    // Install Terraform if necessary (do NOT delete any folder named 'terraform'!)
                     sh '''
                         if ! command -v terraform >/dev/null; then
                             echo "Terraform not found, installing..."
-                            
-                            # Corrected curl command to be on a single logical line
-                            # This downloads the file to the current directory
                             curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
-                            
-                            # Unzip into the current directory
                             unzip -o terraform_1.7.5_linux_amd64.zip
-                            
-                            # Move the extracted binary to a global location
                             mv terraform /usr/local/bin/
-                            
-                            # Clean up the downloaded zip file
                             rm terraform_1.7.5_linux_amd64.zip
                         fi
                         terraform -version
                     '''
 
+                    // This should match your GitHub repo structure (change if needed)
                     def repoId = "smuruhesan/cortex-cloud-lab"
                     def githubUsername = repoId.split('/')[0]
 
+                    // Use Jenkins Azure SP credential, will set env vars for terraform-azure provider
                     withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
                         dir('terraform') {
-                            sh 'ls -l'
+                            sh 'ls -l' // Sanity check again
                             sh 'rm -f .terraform.lock.hcl || true'
                             sh 'terraform init'
+                            // If you want to pass vars: change below as needed
                             sh """terraform plan -out=tfplan -var='username=${githubUsername}' || terraform plan -out=tfplan"""
+                            // 'username' is just an example, make sure you have a variable block for it
                             sh 'terraform apply -auto-approve tfplan'
+                            // The post-build script will handle the .terraform folder cleanup.
                         }
                     }
                 }
@@ -138,7 +135,7 @@ pipeline {
     
     // NEW: Post-build actions for cleanup
     post {
-        always { // This block runs regardless of pipeline success or failure
+        always {
             script {
                 // Forcefully remove the .terraform directory from within the container
                 // This prevents the "Operation not permitted" error on the next build's deleteDir() step
