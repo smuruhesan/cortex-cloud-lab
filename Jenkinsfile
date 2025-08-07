@@ -102,9 +102,18 @@ pipeline {
                     sh '''
                         if ! command -v terraform >/dev/null; then
                             echo "Terraform not found, installing..."
+                            
+                            # Corrected curl command to be on a single logical line
+                            # This downloads the file to the current directory
                             curl -LO https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
+                            
+                            # Unzip into the current directory
                             unzip -o terraform_1.7.5_linux_amd64.zip
+                            
+                            # Move the extracted binary to a global location
                             mv terraform /usr/local/bin/
+                            
+                            # Clean up the downloaded zip file
                             rm terraform_1.7.5_linux_amd64.zip
                         fi
                         terraform -version
