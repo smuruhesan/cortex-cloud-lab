@@ -105,17 +105,18 @@ pipeline {
                         sh '''
                         pwd
                         ls -l
+                        
         
                         az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
                         
                         export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
-        
-                        # Dynamically set the username from the GIT_URL
 
-                        export TF_VAR_username="${USERNAME}"
+                        # Dynamically set the username from the GIT_URL and export it to Terraform
+                        export TF_VAR_username=$(echo "${GIT_URL}" | cut -d'/' -f4)
+        
                         
                         # Dynamically set the resource group name using the username
-                        RG_NAME="${USERNAME}-vulnerable-terraform-rg"
+                        RG_NAME="${TF_VAR_username}-vulnerable-terraform-rg"
         
                         # Initialize Terraform first
                         terraform init
