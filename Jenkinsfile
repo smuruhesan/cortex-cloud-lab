@@ -119,7 +119,7 @@ pipeline {
                 else
                   echo "Terraform is not found. Installing for cleanup..."
                   curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-                  unzip terraform.zip
+                  unzip -o terraform.zip
                   chmod +x terraform
                   mv terraform /usr/local/bin/
                   terraform destroy -auto-approve
