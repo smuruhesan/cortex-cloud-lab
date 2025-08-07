@@ -6,12 +6,6 @@
 variable "username" {
   description = "Your GitHub username or a unique identifier to prefix resources. Please update this in terraform.tfvars."
   type        = string
-  default     = "YOUR_GITHUB_USERNAME_PLACEHOLDER" # Changed default to a clear placeholder
-
-  validation {
-    condition     = var.username != "YOUR_GITHUB_USERNAME_PLACEHOLDER"
-    error_message = "The 'username' variable must be updated in terraform/terraform.tfvars with your unique GitHub username or identifier. Please replace 'YOUR_GITHUB_USERNAME_PLACEHOLDER'."
-  }
 }
 
 # Configure the Azure provider
