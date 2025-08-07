@@ -91,31 +91,25 @@ pipeline {
                 '''
             }
         }
-            stage('Terraform Init and Plan') {
-                steps {
-                    unstash 'source'
-                    // Create the directory if it doesn't exist
-                    sh 'mkdir -p terraform-directory/terraform'
-                    // Move all the terraform files from the root to the correct folder
-                    sh 'mv *.tf terraform-directory/terraform/'
-                    sh 'mv *.tfvars terraform-directory/terraform/'
-            
-                    withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                        dir('terraform-directory/terraform') {
-                            sh '''
-                            pwd
-                            ls -l
-                            az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                            
-                            export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
-                            
-                            terraform init
-                            terraform plan -out=tfplan
-                            '''
-                        }
+        stage('Terraform Init and Plan') {
+            steps {
+                withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                    dir('terraform-directory/terraform') {
+                        unstash 'source'
+                        sh '''
+                        pwd
+                        ls -l
+                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                        
+                        export ARM_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
+                        
+                        terraform init
+                        terraform plan -out=tfplan
+                        '''
                     }
                 }
             }
+        }
 
         stage('Terraform Apply') {
             steps {
