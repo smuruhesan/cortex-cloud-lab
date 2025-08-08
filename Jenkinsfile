@@ -3,7 +3,7 @@
 pipeline {
     agent {
         docker {
-            image 'cimg/node:22.17.0'
+            image 'ubuntu:latest'
             args '-u root'
         }
     }
